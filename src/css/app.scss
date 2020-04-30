@@ -1,0 +1,10 @@
+// app global css in SCSS form
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+$--q-color-dark: #f00;
+
+body.body--dark {
+  background: #000;
+}

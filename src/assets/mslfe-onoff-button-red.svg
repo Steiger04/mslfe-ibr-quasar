@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg width="90.733mm" height="90.677mm" version="1.1" viewBox="0 0 90.733 90.677" xmlns="http://www.w3.org/2000/svg" xmlns:cc="http://creativecommons.org/ns#" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#" xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <linearGradient id="linearGradient839">
+   <stop stop-color="#ccc" offset="0"/>
+   <stop stop-color="#666" offset=".38619"/>
+   <stop offset=".62762"/>
+   <stop stop-color="#ccc" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient935">
+   <stop stop-color="#01f1f5" offset="0"/>
+   <stop stop-color="#26cfea" offset=".52843"/>
+   <stop stop-color="#188dff" offset="1"/>
+  </linearGradient>
+  <filter id="filter1814" x="-.043186" y="-.043214" width="1.0864" height="1.0864" color-interpolation-filters="sRGB">
+   <feGaussianBlur stdDeviation="1.5028459"/>
+  </filter>
+  <linearGradient id="linearGradient1848" x1="108.65" x2="192.17" y1="186.12" y2="186.12" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient839"/>
+  <linearGradient id="linearGradient1850" x1="118.25" x2="179.81" y1="149.04" y2="209.52" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#ccc" offset="0"/>
+   <stop stop-color="#666" offset=".18961"/>
+   <stop stop-color="#333" offset=".31041"/>
+   <stop stop-color="#e6e6e6" offset=".5664"/>
+   <stop offset=".68452"/>
+   <stop stop-color="#e6e6e6" offset="1"/>
+  </linearGradient>
+  <linearGradient id="linearGradient1852" x1="114.86" x2="186.28" y1="186.14" y2="186.14" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient839"/>
+  <radialGradient id="radialGradient1854" cx="156.97" cy="186.8" r="33.661" gradientUnits="userSpaceOnUse" xlink:href="#linearGradient935"/>
+  <radialGradient id="radialGradient1858" cx="156.97" cy="186.8" r="33.661" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#eb5a90" offset="0"/>
+   <stop stop-color="#f2007b" offset=".52843"/>
+   <stop stop-color="#ac0048" offset="1"/>
+  </radialGradient>
+  <linearGradient id="linearGradient1860" x1="522.99" x2="599.24" y1="237.44" y2="319.51" gradientUnits="userSpaceOnUse">
+   <stop stop-color="#fff" offset="0"/>
+   <stop stop-color="#fff" stop-opacity=".34171" offset=".3911"/>
+   <stop stop-color="#fff" stop-opacity=".19598" offset="1"/>
+  </linearGradient>
+ </defs>
+ <metadata>
+  <rdf:RDF>
+   <cc:Work rdf:about="">
+    <dc:format>image/svg+xml</dc:format>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:title/>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <g transform="translate(-147.37 -140.78)">
+  <g transform="translate(42.333)">
+   <path d="m149.76 144.4c-26.793-0.55463-48.365 29.867-38.805 54.975 7.472 23.913 39.074 36.439 60.537 22.943 21.365-11.819 27.915-44.299 11.344-62.615-7.9708-9.7277-20.495-15.553-33.076-15.303z" filter="url(#filter1814)"/>
+   <path d="m149.76 144.4c-26.793-0.55463-48.365 29.867-38.805 54.975 7.472 23.913 39.074 36.439 60.537 22.943 21.365-11.819 27.915-44.299 11.344-62.615-7.9708-9.7277-20.495-15.553-33.076-15.303z" fill="url(#linearGradient1848)"/>
+   <path d="m149.76 146.4c-24.693-0.38591-44.937 26.622-37.51 50.221 5.7525 23.212 35.143 36.62 56.271 24.986 21.338-10.211 29.001-41.374 13.504-59.703-7.5464-9.8274-19.876-15.759-32.266-15.504z" fill="url(#linearGradient1850)"/>
+   <path d="m150.52 150.44c-20.722-0.57002-38.622 19.787-35.252 40.267 2.0104 21.242 25.777 36.448 45.908 29.41 20.38-5.5888 31.326-31.139 21.389-49.772-5.7814-12.039-18.697-20.03-32.045-19.905z" fill="url(#linearGradient1852)"/>
+   <circle cx="150.59" cy="186.09" r="33.661" fill="url(#radialGradient1854)"/>
+   <circle cx="150.59" cy="186.09" r="33.661" fill="url(#radialGradient1854)"/>
+   <circle cx="150.59" cy="186.09" r="33.661" fill="url(#radialGradient1858)"/>
+   <path transform="matrix(.26458 0 0 .26458 0 87)" d="m568.73 254.91c-2.641-2e-3 -5.2813 0.0832-7.916 0.25586-71.302 2.5543-125.45 78.055-108.59 145.89 7.1787 19.881 11.322 17.105 21.224 5.8616 27.181-41.195 50.386-73.229 118.84-107.3 10.349-5.1506 19.953-8.7104 31.625-14.276 17.655-9.5889 8.1231-13.287-3.7341-18.975-16.013-7.5392-33.739-11.448-51.451-11.459z" fill="url(#linearGradient1860)"/>
+  </g>
+ </g>
+</svg>

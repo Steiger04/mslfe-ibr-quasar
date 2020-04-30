@@ -1,0 +1,30 @@
+{
+  "ide-helper": {
+    "addToGitIgnore": true,
+    "__internal": {
+      "lastQuasarVersion": "1.9.16",
+      "lastIdeHelperVersion": "1.0.0-alpha.3"
+    }
+  },
+  "@quasar/icon-genie": {
+    "minify_dev": "pngquant",
+    "minify_build": "zopfli",
+    "cordova": {
+      "background_color": "#000074",
+      "splashscreen_type": "pure"
+    },
+    "build_always": false,
+    "__internal": {
+      "dev": {
+        "pwa": {
+          "iconHash": "9f2567054a6e9593588f2d24ab08e08b"
+        }
+      },
+      "build": {
+        "pwa": {
+          "iconHash": "9f2567054a6e9593588f2d24ab08e08b"
+        }
+      }
+    }
+  }
+}
