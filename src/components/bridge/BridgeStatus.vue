@@ -9,7 +9,7 @@
           <img
             @click.stop="$q.fullscreen.toggle()"
             class="tw-h-12 tw-w-12"
-            :src="`statics/img/msl-${boxTypeName}-web-alpha.png`"
+            :src="`statics/img/msl-${boxTypeName}-web-alpha.png`.toLowerCase()"
           >
         </div>
 
