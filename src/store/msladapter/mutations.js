@@ -91,7 +91,7 @@ export const setInstances = (state, instances) => {
 }
 
 export const setState = (state, payload) => {
-  if (state.ids.statevalues[payload.id].val !== payload.state.val) {
+  if (state.ids.statevalues[payload.id] !== undefined && state.ids.statevalues[payload.id].val !== payload.state.val) {
     Object.assign(state.ids.statevalues[payload.id], payload.state)
   }
 }

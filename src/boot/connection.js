@@ -86,10 +86,7 @@ export default async ({ store }) => {
 async function getAll (type, ids) {
   return new Promise((resolve, reject) => {
     if (type === 'statevalue') {
-      servConn.getStates(ids + '*', function (
-        err,
-        _statevalues
-      ) {
+      servConn.getStates(ids + '*', function (err, _statevalues) {
         if (err) {
           reject(err)
         }
