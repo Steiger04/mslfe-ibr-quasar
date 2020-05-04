@@ -15,7 +15,7 @@
         class="tw-p-0"
         v-for="(actionItem, idx) in actionItems"
         :key="idx"
-        :style="'padding: 0px; margin: 0px -14px;'"
+        :style="'margin-right: -30px;'"
         @click="selectModeAndPicker(actionItem)"
         icon=""
         flat
