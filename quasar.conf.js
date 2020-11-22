@@ -62,6 +62,9 @@ module.exports = function (ctx) {
 
     // https://quasar.dev/quasar-cli/quasar-conf-js#Property%3A-build
     build: {
+      devtool: 'source-map',
+      extractCSS: true,
+      sourceMap: true,
       scopeHoisting: true,
       distDir: '../iobroker/node_modules/iobroker.milight-smart-light/mslfe-ibr-quasar',
       // vueRouterMode: 'history',

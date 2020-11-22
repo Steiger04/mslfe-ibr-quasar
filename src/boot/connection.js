@@ -13,7 +13,10 @@ export default async ({ store }) => {
   if (process.env.DEV) {
     WS_PORT = 8082
   } else {
-    const URL = document.location.href.split('/').slice(0, 3).join('/')
+    const URL = document.location.href
+      .split('/')
+      .slice(0, 3)
+      .join('/')
     const data = (await axios.get(URL + '/options')).data
 
     WS_PORT = data.port
@@ -38,6 +41,18 @@ export default async ({ store }) => {
       {
         onConnChange: async function (isConnected) {
           if (isConnected) {
+            await getAll('device', 'milight-smart-light')
+
+            await getAll('channel', 'milight-smart-light')
+
+            await getAll('state', 'milight-smart-light')
+
+            await getAll('device', 'milight-smart-light')
+
+            await getAll('state', 'system.adapter.milight-smart-light')
+
+            await getAll('statevalue', 'system.adapter.milight-smart-light')
+
             resolve({
               groups: await getAll('device', 'milight-smart-light'),
               zones: await getAll('channel', 'milight-smart-light'),
@@ -55,7 +70,8 @@ export default async ({ store }) => {
             store.dispatch('msladapter/setState', { id, state })
 
             if (id.split('.')[0] !== 'system') {
-              Vue.$log.debug('NEW VALUE of ID --> ' + id + ': ' + JSON.stringify(state, null, '|'))
+              Vue.$log.debug('NEW VALUE of ID --> ' + id + ': ' + JSON.stringify(state, null, '|')
+              )
             }
           }
         }
@@ -63,20 +79,29 @@ export default async ({ store }) => {
     )
   }).catch(err => Vue.$log.error('[middleware:connection]: ' + err))
 
+  // console.log('allIds', allIds)
+
   Object.assign(allIds.statevalues, allIds.adminstatevalues)
   // noinspection JSUnresolvedFunction
   store.dispatch('msladapter/setAllMslids', allIds)
 
-  let instances = (await Promise.all(store.getters['msladapter/getInstanceNames'].map(instance => {
-    return new Promise((resolve, reject) => {
-      // eslint-disable-next-line handle-callback-err
-      servConn._socket.emit('getObject', instance, function (err, res) {
-        resolve(res)
+  let instances = (
+    await Promise.all(
+      store.getters['msladapter/getInstanceNames'].map(instance => {
+        return new Promise((resolve, reject) => {
+          // eslint-disable-next-line handle-callback-err
+          servConn._socket.emit('getObject', instance, function (err, res) {
+            resolve(res)
+          })
+        })
       })
-    })
-  }))).map(val => [
+    )
+  ).map(val => [
     val._id.split('.').slice(2).join('.'),
-    Object.assign(val, { instance_id: val._id.split('.').splice(2).join('.') })])
+    Object.assign(val, {
+      instance_id: val._id.split('.').splice(2).join('.')
+    })
+  ])
 
   store.dispatch('msladapter/setInstances', Object.fromEntries(instances))
   Loading.hide()
