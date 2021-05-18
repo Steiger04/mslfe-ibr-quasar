@@ -1,6 +1,13 @@
 /* eslint-disable */
-/// /// ----------------------- Connection "class" ---------------------- ////////////
-/* jshint browser:true */
+import Vue from 'vue'
+import io from 'socket.io-client'
+// The idea of servConn is to use this class later in every addon.
+// The addon just must say, what must be loaded (values, objects, indexes) and
+// the class loads it for addon. Authentication will be done automatically, so addon does not care about it.
+// It will be .js file with localData and servConn
+
+////// ----------------------- Connection "class" ---------------------- ////////////
+/* jshint browser: true */
 /* global document */
 /* global console */
 /* global session */
@@ -8,17 +15,16 @@
 /* global location */
 /* global setTimeout */
 /* global clearTimeout */
-// eslint-disable-next-line no-unused-vars
 /* global io */
 /* global $ */
 /* global socketNamespace */
 /* global socketUrl */
 /* global socketSession */
 /* global storage */
-/* jshint -W097 */// jshint strict:false
+/* jshint -W097 */
+/* jshint strict: false */
 
-import Vue from 'vue'
-import io from 'socket.io-client'
+'use strict'
 
 // The idea of servConn is to use this class later in every addon.
 // The addon just must say, what must be loaded (values, objects, indexes) and
@@ -46,18 +52,18 @@ export default {
   _cmdQueue: [],
   _connTimer: null,
   _type: 'socket.io', // [SignalR | socket.io | local]
-  _timeout: 0, // 0 - use transport default timeout to detect disconnect
-  _reconnectInterval: 10000, // reconnect interval
-  _reloadInterval: 30, // if connection was absent longer than 30 seconds
+  _timeout: 0,           // 0 - use transport default timeout to detect disconnect
+  _reconnectInterval: 10000,       // reconnect interval
+  _reloadInterval: 30,          // if connection was absent longer than 30 seconds
   _cmdData: null,
   _cmdInstance: null,
   _isSecure: false,
   _defaultMode: 0x644,
   _useStorage: false,
-  _objects: null, // used if _useStorage === true
-  _enums: null, // used if _useStorage === true
+  _objects: null,        // used if _useStorage === true
+  _enums: null,        // used if _useStorage === true
+  _autoSubscribe: true,
   namespace: 'vis.0',
-  subscribePattern: '*',
 
   getType: function () {
     return this._type
@@ -83,62 +89,69 @@ export default {
       return false
     }
 
-    if (this._queueCmdIfRequired(func, _arguments)) return false
+    if (this._queueCmdIfRequired(func, _arguments)) {
+      return false
+    }
 
-    // socket.io
+    //socket.io
     if (this._socket === null) {
       Vue.$log.debug('socket.io not initialized')
       return false
+    } else {
+      return true
     }
-    return true
   },
   _monitor: function () {
-    if (this._timer) return
-    let ts = (new Date()).getTime()
+    if (this._timer) {
+      return
+    }
+
+    var ts = Date.now()
     if (this._reloadInterval && ts - this._lastTimer > this._reloadInterval * 1000) {
       // It seems, that PC was in a sleep => Reload page to request authentication anew
-      window.location.reload()
+      this.reload()
     } else {
       this._lastTimer = ts
     }
-    let that = this
+
+    var that = this
     this._timer = setTimeout(function () {
       that._timer = null
       that._monitor()
     }, 10000)
   },
   _onAuth: function (objectsRequired, isSecure) {
-    let that = this
+    var that = this
 
     this._isSecure = isSecure
 
     if (this._isSecure) {
-      that._lastTimer = (new Date()).getTime()
+      that._lastTimer = Date.now()
       this._monitor()
     }
 
-    // this._socket.emit('subscribe', '*')
-    this._socket.emit('subscribe', that.subscribePattern)
-    if (objectsRequired) this._socket.emit('subscribeObjects', '*')
+    this._autoSubscribe && this._socket.emit('subscribe', '*')
+    objectsRequired && this._socket.emit('subscribeObjects', '*')
 
     if (this._isConnected === true) {
       // This seems to be a reconnect because we're already connected!
       // -> prevent firing onConnChange twice
       return
     }
+
     this._isConnected = true
     if (this._connCallbacks.onConnChange) {
       setTimeout(function () {
         that._socket.emit('authEnabled', function (auth, user) {
           that._user = user
           that._connCallbacks.onConnChange(that._isConnected)
-          if (typeof app !== 'undefined') app.onConnChange(that._isConnected)
+          typeof app !== 'undefined' && app.onConnChange(that._isConnected)
         })
       }, 0)
     }
   },
   reconnect: function (connOptions) {
-    let that = this
+    var that = this
     // reconnect
     if ((!connOptions.mayReconnect || connOptions.mayReconnect()) && !this._connectInterval) {
       this._connectInterval = setInterval(function () {
@@ -163,16 +176,29 @@ export default {
       }, 1000)
     }
   },
-  init: function (connOptions, connCallbacks, objectsRequired) {
-    let that = this // support of old safary
+  reload: function () {
+    if (window.location.host === 'iobroker.net' ||
+      window.location.host === 'iobroker.biz' ||
+      window.location.host === 'iobroker.pro') {
+      window.location = '/'
+    } else {
+      window.location.reload()
+    }
+  },
+  init: function (connOptions, connCallbacks, objectsRequired, autoSubscribe) {
+    var that = this // support of old safari
     // init namespace
-    if (typeof socketNamespace !== 'undefined') this.namespace = socketNamespace
+    if (typeof socketNamespace !== 'undefined') {
+      this.namespace = socketNamespace
+    }
 
     connOptions = connOptions || {}
-    if (!connOptions.name) connOptions.name = this.namespace
+    if (!connOptions.name) {
+      connOptions.name = this.namespace
+    }
 
-    if (connOptions.subscribePattern !== undefined) {
-      this.subscribePattern = connOptions.subscribePattern
+    if (autoSubscribe !== undefined) {
+      this._autoSubscribe = autoSubscribe
     }
 
     // To start vis as local use one of:
@@ -186,7 +212,7 @@ export default {
     }
 
     if (typeof session !== 'undefined') {
-      let user = session.get('user')
+      var user = session.get('user')
       if (user) {
         that._authInfo = {
           user: user,
@@ -198,14 +224,16 @@ export default {
 
     this._connCallbacks = connCallbacks
 
-    let connLink = connOptions.connLink || window.localStorage.getItem('connLink')
+    var connLink = connOptions.connLink || window.localStorage.getItem('connLink')
 
     // Connection data from "/_socket/info.js"
-    if (!connLink && typeof socketUrl !== 'undefined') connLink = socketUrl
-    if (!connOptions.socketSession && typeof socketSession !== 'undefined') connOptions.socketSession = socketSession
-    if (connOptions.socketForceWebSockets === undefined &&
-      typeof socketForceWebSockets !== 'undefined') {
-      // eslint-disable-next-line no-undef
+    if (!connLink && typeof socketUrl !== 'undefined') {
+      connLink = socketUrl
+    }
+    if (!connOptions.socketSession && typeof socketSession !== 'undefined') {
+      connOptions.socketSession = socketSession
+    }
+    if (connOptions.socketForceWebSockets === undefined && typeof socketForceWebSockets !== 'undefined') {
       connOptions.socketForceWebSockets = socketForceWebSockets
     }
 
@@ -213,19 +241,26 @@ export default {
     if (this._type === 'local') {
       // report connected state
       this._isConnected = true
-      if (this._connCallbacks.onConnChange) this._connCallbacks.onConnChange(this._isConnected)
-      if (typeof app !== 'undefined') app.onConnChange(this._isConnected)
+      this._connCallbacks.onConnChange && this._connCallbacks.onConnChange(this._isConnected)
+      typeof app !== 'undefined' && app.onConnChange(this._isConnected)
     } else if (typeof io !== 'undefined') {
       connOptions.socketSession = connOptions.socketSession || 'nokey'
 
-      let url
+      var url
       if (connLink) {
-        url = connLink
         if (typeof connLink !== 'undefined') {
-          if (connLink[0] === ':') connLink = location.protocol + '://' + location.hostname + connLink
+          if (connLink[0] === ':') {
+            connLink = location.protocol + '//' + location.hostname + connLink
+          }
         }
+        url = connLink
       } else {
         url = location.protocol + '//' + location.host
+      }
+
+      // remove port if via cloud
+      if (url.match(/iobroker\.pro|iobroker\.net/)) {
+        url = url.replace(/:\d+/, '')
       }
 
       this._socket = io.connect(url, {
@@ -240,11 +275,13 @@ export default {
 
       this._socket.on('connect', function () {
         if (that._disconnectedSince) {
-          let offlineTime = (new Date()).getTime() - that._disconnectedSince
+          var offlineTime = Date.now() - that._disconnectedSince
           Vue.$log.debug('was offline for ' + (offlineTime / 1000) + 's')
 
           // reload whole page if no connection longer than some period
-          if (that._reloadInterval && offlineTime > that._reloadInterval * 1000) window.location.reload()
+          if (that._reloadInterval && offlineTime > that._reloadInterval * 1000 && !that.authError) {
+            that.reload()
+          }
 
           that._disconnectedSince = null
         }
@@ -257,20 +294,35 @@ export default {
           clearInterval(that._countInterval)
           that._countInterval = null
         }
-        let elem = document.getElementById('server-disconnect')
-        if (elem) elem.style.display = 'none'
+        var elem = document.getElementById('server-disconnect')
+        if (elem) {
+          elem.style.display = 'none'
+        }
 
         that._socket.emit('name', connOptions.name)
-        Vue.$log.debug((new Date()).toISOString() + ' Connected => authenticate')
+        Vue.$log.debug(new Date().toISOString() + ' Connected => authenticate')
+
         setTimeout(function () {
-          let wait = setTimeout(function () {
-            Vue.$log.error('No answer from server')
-            window.location.reload()
-          }, 3000)
+          var timeOut = 6000
+          // If online give more time
+          if (window.location.href.indexOf('iobroker.') !== -1) {
+            timeOut = 12000
+          }
+          that.waitConnect = setTimeout(function () {
+            console.error('No answer from server')
+            if (!that.authError) {
+              that.reload()
+            }
+          }, timeOut)
 
           that._socket.emit('authenticate', function (isOk, isSecure) {
-            clearTimeout(wait)
-            Vue.$log.debug((new Date()).toISOString() + ' Authenticated: ' + isOk)
+            if (that.waitConnect) {
+              clearTimeout(that.waitConnect)
+              that.waitConnect = null
+            }
+
+            Vue.$log.debug(new Date().toISOString() + ' Authenticated: ' + isOk)
+
             if (isOk) {
               that._onAuth(objectsRequired, isSecure)
             } else {
@@ -280,38 +332,58 @@ export default {
         }, 50)
       })
 
-      this._socket.on('reauthenticate', function () {
+      this._socket.on('reauthenticate', function (err) {
         if (that._connCallbacks.onConnChange) {
           that._connCallbacks.onConnChange(false)
-          // eslint-disable-next-line no-undef
-          if (typeof app !== 'undefined') app.onConnChange(false)
+          typeof app !== 'undefined' && !that.authError && app.onConnChange(false)
         }
-        Vue.$log.warn('reauthenticate')
-        window.location.reload()
+        console.warn('reauthenticate')
+        if (that.waitConnect) {
+          clearTimeout(that.waitConnect)
+          that.waitConnect = null
+        }
+
+        if (connCallbacks.onAuthError) {
+          if (!that.authError) {
+            that.authError = true
+            connCallbacks.onAuthError(err)
+          }
+        } else {
+          that.reload()
+        }
       })
 
       this._socket.on('connect_error', function () {
-        $('.splash-screen-text').css('color', '#002951')
+        if (typeof $ !== 'undefined') {
+          $('.splash-screen-text').css('color', '#002951')
+        }
 
         that.reconnect(connOptions)
       })
 
       this._socket.on('disconnect', function () {
-        that._disconnectedSince = (new Date()).getTime()
+        that._disconnectedSince = Date.now()
 
         // called only once when connection lost (and it was here before)
         that._isConnected = false
         if (that._connCallbacks.onConnChange) {
           setTimeout(function () {
-            let elem = document.getElementById('server-disconnect')
-            if (elem) elem.style.display = ''
+            //show server disconnect layer only when socket is not reconnected in the 5s timeout
+            if (that._isConnected) {
+              return
+            }
+            var elem = document.getElementById('server-disconnect')
+            if (elem) {
+              elem.style.display = ''
+            }
             that._connCallbacks.onConnChange(that._isConnected)
-            // eslint-disable-next-line no-undef
-            if (typeof app !== 'undefined') app.onConnChange(that._isConnected)
+            typeof app !== 'undefined' && app.onConnChange(that._isConnected)
           }, 5000)
         } else {
-          let elem = document.getElementById('server-disconnect')
-          if (elem) elem.style.display = ''
+          var elem = document.getElementById('server-disconnect')
+          if (elem) {
+            elem.style.display = ''
+          }
         }
 
         // reconnect
@@ -320,12 +392,12 @@ export default {
 
       // after reconnect the "connect" event will be called
       this._socket.on('reconnect', function () {
-        let offlineTime = (new Date()).getTime() - that._disconnectedSince
+        var offlineTime = Date.now() - that._disconnectedSince
         Vue.$log.debug('was offline for ' + (offlineTime / 1000) + 's')
 
         // reload whole page if no connection longer than one minute
         if (that._reloadInterval && offlineTime > that._reloadInterval * 1000) {
-          window.location.reload()
+          that.reload()
         }
         // anyway "on connect" is called
       })
@@ -333,25 +405,29 @@ export default {
       this._socket.on('objectChange', function (id, obj) {
         // If cache used
         if (that._useStorage && typeof storage !== 'undefined') {
-          let objects = that._objects || storage.get('objects')
+          var objects = that._objects || storage.get('objects')
           if (objects) {
             if (obj) {
               objects[id] = obj
-            } else {
-              if (objects[id]) delete objects[id]
+            } else if (objects[id]) {
+              delete objects[id]
             }
             storage.set('objects', objects)
           }
         }
 
-        if (that._connCallbacks.onObjectChange) that._connCallbacks.onObjectChange(id, obj)
+        that._connCallbacks.onObjectChange && that._connCallbacks.onObjectChange(id, obj)
       })
 
       this._socket.on('stateChange', function (id, state) {
-        if (!id || state === null || typeof state !== 'object') return
+        if (!id || state === null || typeof state !== 'object') {
+          return
+        }
 
         if (that._connCallbacks.onCommand && id === that.namespace + '.control.command') {
-          if (state.ack) return
+          if (state.ack) {
+            return
+          }
 
           if (state.val &&
             typeof state.val === 'string' &&
@@ -370,11 +446,9 @@ export default {
               // clear state
               that.setState(id, { val: '', ack: true })
             }
-          } else {
-            if (that._connCallbacks.onCommand(that._cmdInstance, state.val, that._cmdData)) {
-              // clear state
-              that.setState(id, { val: '', ack: true })
-            }
+          } else if (that._connCallbacks.onCommand(that._cmdInstance, state.val, that._cmdData)) {
+            // clear state
+            that.setState(id, { val: '', ack: true })
           }
         } else if (id === that.namespace + '.control.data') {
           that._cmdData = state.val
@@ -392,10 +466,36 @@ export default {
            type:
            operation:
            arg:
-           } */
+           }*/
           that._connCallbacks.onError(err)
         } else {
           Vue.$log.debug('permissionError')
+        }
+      })
+
+      this._socket.on('error', function (err) {
+        if (err === 'Invalid password or user name') {
+          console.warn('reauthenticate')
+          if (that.waitConnect) {
+            clearTimeout(that.waitConnect)
+            that.waitConnect = null
+          }
+
+          if (connCallbacks.onAuthError) {
+            if (!that.authError) {
+              that.authError = true
+              connCallbacks.onAuthError(err)
+            }
+          } else {
+            that.reload()
+          }
+        } else {
+          console.error('Socket error: ' + err)
+          if (typeof $ !== 'undefined') {
+            $('.splash-screen-text').css('color', '#002951')
+          }
+
+          that.reconnect(connOptions)
         }
       })
     }
@@ -409,49 +509,65 @@ export default {
     this._socket.emit('logout', callback)
   },
   getVersion: function (callback) {
-    if (!this._checkConnection('getVersion', arguments)) return
+    if (!this._checkConnection('getVersion', arguments)) {
+      return
+    }
 
-    this._socket.emit('getVersion', function (version) {
-      if (callback) callback(version)
+    this._socket.emit('getVersion', function (error, version) {
+      callback && callback(version || error)
     })
+  },
+  subscribe: function (idOrArray, callback) {
+    if (!this._checkConnection('subscribe', arguments)) {
+      return
+    }
+
+    this._socket.emit('subscribe', idOrArray, callback)
+  },
+  unsubscribe: function (idOrArray, callback) {
+    if (!this._checkConnection('unsubscribe', arguments)) {
+      return
+    }
+
+    this._socket.emit('unsubscribe', idOrArray, callback)
   },
   _checkAuth: function (callback) {
     if (!this._isConnected) {
       Vue.$log.debug('No connection!')
       return
     }
-    // socket.io
+    //socket.io
     if (this._socket === null) {
       Vue.$log.debug('socket.io not initialized')
       return
     }
-    this._socket.emit('getVersion', function (version) {
-      if (callback) {
-        callback(version)
-      }
+    this._socket.emit('getVersion', function (error, version) {
+      callback && callback(version || error)
     })
   },
   readFile: function (filename, callback, isRemote) {
-    // eslint-disable-next-line no-throw-literal
-    if (!callback) throw 'No callback set'
+    if (!callback) {
+      throw 'No callback set'
+    }
 
     if (this._type === 'local') {
       try {
-        let data = storage.get(filename)
+        var data = storage.get(filename)
         callback(null, data ? JSON.parse(storage.get(filename)) : null)
       } catch (err) {
         callback(err, null)
       }
     } else {
-      if (!this._checkConnection('readFile', arguments)) return
+      if (!this._checkConnection('readFile', arguments)) {
+        return
+      }
 
-      if (!isRemote && typeof app !== 'undefined') {
-        // eslint-disable-next-line no-undef
+      if (!isRemote && typeof app !== 'undefined' && !app.settings.dontCache) {
         app.readLocalFile(filename.replace(/^\/vis\.0\//, ''), callback)
       } else {
-        let adapter = this.namespace
+        var adapter = this.namespace
         if (filename[0] === '/') {
-          let p = filename.split('/')
+          var p = filename.split('/')
           adapter = p[1]
           p.splice(0, 2)
           filename = p.join('/')
@@ -466,8 +582,10 @@ export default {
     }
   },
   getMimeType: function (ext) {
-    if (ext.indexOf('.') !== -1) ext = ext.toLowerCase().match(/\.[^.]+$/)
-    let _mimeType
+    if (ext.indexOf('.') !== -1) {
+      ext = ext.toLowerCase().match(/\.[^.]+$/)
+    }
+    var _mimeType
     if (ext === '.css') {
       _mimeType = 'text/css'
     } else if (ext === '.bmp') {
@@ -510,16 +628,16 @@ export default {
     return _mimeType
   },
   readFile64: function (filename, callback, isRemote) {
-    let that = this
+    var that = this
     if (!callback) {
-      // eslint-disable-next-line no-throw-literal
       throw 'No callback set'
     }
 
-    if (!this._checkConnection('readFile', arguments)) return
+    if (!this._checkConnection('readFile64', arguments)) {
+      return
+    }
 
-    if (!isRemote && typeof app !== 'undefined') {
-      // eslint-disable-next-line no-undef
+    if (!isRemote && typeof app !== 'undefined' && !app.settings.dontCache) {
       app.readLocalFile(filename.replace(/^\/vis\.0\//, ''), function (err, data, mimeType) {
         setTimeout(function () {
           if (data) {
@@ -530,9 +648,9 @@ export default {
         }, 0)
       })
     } else {
-      let adapter = this.namespace
+      var adapter = this.namespace
       if (filename[0] === '/') {
-        let p = filename.split('/')
+        var p = filename.split('/')
         adapter = p[1]
         p.splice(0, 2)
         filename = p.join('/')
@@ -556,14 +674,18 @@ export default {
     }
     if (this._type === 'local') {
       storage.set(filename, JSON.stringify(data))
-      if (callback) callback()
+      callback && callback()
     } else {
-      if (!this._checkConnection('writeFile', arguments)) return
+      if (!this._checkConnection('writeFile', arguments)) {
+        return
+      }
 
-      if (typeof data === 'object') data = JSON.stringify(data, null, 2)
+      if (typeof data === 'object') {
+        data = JSON.stringify(data, null, 2)
+      }
 
-      let parts = filename.split('/')
-      let adapter = parts[1]
+      var parts = filename.split('/')
+      var adapter = parts[1]
       parts.splice(0, 2)
       if (adapter === 'vis') {
         this._socket.emit('writeFile', adapter, parts.join('/'), data, mode ? { mode: this._defaultMode } : {}, callback)
@@ -574,69 +696,71 @@ export default {
   },
   // Write file base 64
   writeFile64: function (filename, data, callback) {
-    if (!this._checkConnection('writeFile', arguments)) return
+    if (!this._checkConnection('writeFile64', arguments)) {
+      return
+    }
 
-    let parts = filename.split('/')
-    let adapter = parts[1]
+    var parts = filename.split('/')
+    var adapter = parts[1]
     parts.splice(0, 2)
 
-    this._socket.emit('writeFile', adapter, parts.join('/'), atob(data), { mode: this._defaultMode }, callback)
+    this._socket.emit('writeFile64', adapter, parts.join('/'), data, { mode: this._defaultMode }, callback)
   },
   readDir: function (dirname, callback) {
-    // socket.io
+    //socket.io
     if (this._socket === null) {
       Vue.$log.debug('socket.io not initialized')
       return
     }
-    if (!dirname) dirname = '/'
-    let parts = dirname.split('/')
-    let adapter = parts[1]
+    dirname = dirname || '/'
+    var parts = dirname.split('/')
+    var adapter = parts[1]
     parts.splice(0, 2)
 
     this._socket.emit('readDir', adapter, parts.join('/'), { filter: true }, function (err, data) {
-      if (callback) callback(err, data)
+      callback && callback(err, data)
     })
   },
   mkdir: function (dirname, callback) {
-    let parts = dirname.split('/')
-    let adapter = parts[1]
+    var parts = dirname.split('/')
+    var adapter = parts[1]
     parts.splice(0, 2)
 
     this._socket.emit('mkdir', adapter, parts.join('/'), function (err) {
-      if (callback) callback(err)
+      callback && callback(err)
     })
   },
   unlink: function (name, callback) {
-    let parts = name.split('/')
-    let adapter = parts[1]
+    var parts = name.split('/')
+    var adapter = parts[1]
     parts.splice(0, 2)
 
     this._socket.emit('unlink', adapter, parts.join('/'), function (err) {
-      if (callback) callback(err)
+      callback && callback(err)
     })
   },
   renameFile: function (oldname, newname, callback) {
-    let parts1 = oldname.split('/')
-    let adapter = parts1[1]
+    var parts1 = oldname.split('/')
+    var adapter = parts1[1]
     parts1.splice(0, 2)
-    let parts2 = newname.split('/')
+    var parts2 = newname.split('/')
     parts2.splice(0, 2)
     this._socket.emit('rename', adapter, parts1.join('/'), parts2.join('/'), function (err) {
-      if (callback) callback(err)
+      callback && callback(err)
     })
   },
   setState: function (pointId, value, callback) {
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      // Vue.$log.debug('socket.io not initialized');
+      //Vue.$log.debug('socket.io not initialized');
       return
     }
     this._socket.emit('setState', pointId, value, callback)
   },
   sendTo: function (instance, command, payload, callback) {
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      // Vue.$log.debug('socket.io not initialized');
+      //Vue.$log.debug('socket.io not initialized');
       return
     }
     this._socket.emit('sendTo', instance, command, payload, callback)
@@ -651,22 +775,26 @@ export default {
     if (this._type === 'local') {
       return callback(null, [])
     } else {
-      if (!this._checkConnection('getStates', arguments)) return
-
-      this.gettingStates = this.gettingStates || 0
-      this.gettingStates++
-      if (this.gettingStates > 1) {
-        // fix for slow devices
-        Vue.$log.debug('Trying to get empty list, because the whole list could not be loaded')
-        IDs = []
+      if (!this._checkConnection('getStates', arguments)) {
+        return
       }
-      let that = this
+      var that = this
+      this.gettingStates = this.gettingStates || 0
+      if (this.gettingStates > 0) {
+        // fix for slow devices -> if getStates still in progress, wait and try again
+        Vue.$log.debug('Trying to get states again, because emitted getStates still pending')
+        setTimeout(function () {
+          that.getStates(IDs, callback)
+        }, 50)
+        return
+      }
+
+      this.gettingStates++
+
       this._socket.emit('getStates', IDs, function (err, data) {
         that.gettingStates--
         if (err || !data) {
-          if (callback) {
-            callback(err || 'Authentication required')
-          }
+          callback && callback(err || 'Authentication required')
         } else if (callback) {
           callback(null, data)
         }
@@ -674,19 +802,22 @@ export default {
     }
   },
   _fillChildren: function (objects) {
-    let items = []
+    var items = []
 
-    for (let id in objects) {
+    for (var id in objects) {
+      if (!objects.hasOwnProperty(id)) {
+        continue
+      }
       items.push(id)
     }
     items.sort()
 
-    for (let i = 0; i < items.length; i++) {
+    for (var i = 0; i < items.length; i++) {
       if (objects[items[i]].common) {
-        let j = i + 1
-        let children = []
-        let len = items[i].length + 1
-        let name = items[i] + '.'
+        var j = i + 1
+        var children = []
+        var len = items[i].length + 1
+        var name = items[i] + '.'
         while (j < items.length && items[j].substring(0, len) === name) {
           children.push(items[j++])
         }
@@ -694,6 +825,27 @@ export default {
         objects[items[i]].children = children
       }
     }
+  },
+  getCharts: function (data, callback) {
+    var that = this
+    // Check if chart view exists
+    this._socket.emit('getObject', '_design/chart', function (err, obj) {
+      if (obj && obj.views && obj.views.chart) {
+        // Read all charts
+        that._socket.emit('getObjectView', 'chart', 'chart', { startkey: '', endkey: '\u9999' }, function (err, res) {
+          if (err) {
+            callback(err)
+            return
+          }
+          for (var i = 0; i < res.rows.length; i++) {
+            data[res.rows[i].value._id] = res.rows[i].value
+          }
+          callback()
+        })
+      } else {
+        callback()
+      }
+    })
   },
   // callback(err, data)
   getObjects: function (useCache, callback) {
@@ -704,16 +856,19 @@ export default {
     // If cache used
     if (this._useStorage && useCache) {
       if (typeof storage !== 'undefined') {
-        let objects = this._objects || storage.get('objects')
-        if (objects) return callback(null, objects)
+        var objects = this._objects || storage.get('objects')
+        if (objects) {
+          return callback(null, objects)
+        }
       } else if (this._objects) {
         return callback(null, this._objects)
       }
     }
 
-    if (!this._checkConnection('getObjects', arguments)) return
-    let that = this
-    // eslint-disable-next-line handle-callback-err
+    if (!this._checkConnection('getObjects', arguments)) {
+      return
+    }
+    var that = this
     this._socket.emit('getObjects', function (err, data) {
       // Read all enums
       that._socket.emit('getObjectView', 'system', 'enum', {
@@ -721,12 +876,10 @@ export default {
         endkey: 'enum.\u9999'
       }, function (err, res) {
         if (err) {
-          callback(err)
-          return
+          return callback(err)
         }
-        let result = {}
-        let enums = {}
-        for (let i = 0; i < res.rows.length; i++) {
+        var enums = {}
+        for (var i = 0; i < res.rows.length; i++) {
           data[res.rows[i].id] = res.rows[i].value
           enums[res.rows[i].id] = res.rows[i].value
         }
@@ -737,11 +890,9 @@ export default {
           endkey: 'system.adapter.\u9999'
         }, function (err, res) {
           if (err) {
-            callback(err)
-            return
+            return callback(err)
           }
-          let result = {}
-          for (let i = 0; i < res.rows.length; i++) {
+          for (var i = 0; i < res.rows.length; i++) {
             data[res.rows[i].id] = res.rows[i].value
           }
           // find out default file mode
@@ -751,22 +902,10 @@ export default {
             that._defaultMode = data['system.adapter.' + that.namespace].native.defaultFileMode
           }
 
-          // Read all channels for images
-          that._socket.emit('getObjectView', 'system', 'channel', {
-            startkey: '',
-            endkey: '\u9999'
-          }, function (err, res) {
-            if (err) {
-              callback(err)
-              return
-            }
-            let result = {}
-            for (let i = 0; i < res.rows.length; i++) {
-              data[res.rows[i].id] = res.rows[i].value
-            }
-
-            // Read all devices for images
-            that._socket.emit('getObjectView', 'system', 'device', {
+          // Read all charts
+          that.getCharts(data, function () {
+            // Read all channels for images
+            that._socket.emit('getObjectView', 'system', 'channel', {
               startkey: '',
               endkey: '\u9999'
             }, function (err, res) {
@@ -774,24 +913,35 @@ export default {
                 callback(err)
                 return
               }
-              let result = {}
-              for (let i = 0; i < res.rows.length; i++) {
+              for (var i = 0; i < res.rows.length; i++) {
                 data[res.rows[i].id] = res.rows[i].value
               }
-
-              if (that._useStorage) {
-                that._fillChildren(data)
-                that._objects = data
-                that._enums = enums
-
-                if (typeof storage !== 'undefined') {
-                  storage.set('objects', data)
-                  storage.set('enums', enums)
-                  storage.set('timeSync', (new Date()).getTime())
+              // Read all devices for images
+              that._socket.emit('getObjectView', 'system', 'device', {
+                startkey: '',
+                endkey: '\u9999'
+              }, function (err, res) {
+                if (err) {
+                  return callback(err)
                 }
-              }
+                for (var i = 0; i < res.rows.length; i++) {
+                  data[res.rows[i].id] = res.rows[i].value
+                }
 
-              if (callback) callback(err, data)
+                if (that._useStorage) {
+                  that._fillChildren(data)
+                  that._objects = data
+                  that._enums = enums
+
+                  if (typeof storage !== 'undefined') {
+                    storage.set('objects', data)
+                    storage.set('enums', enums)
+                    storage.set('timeSync', Date.now())
+                  }
+                }
+
+                callback && callback(err, data)
+              })
             })
           })
         })
@@ -799,7 +949,9 @@ export default {
     })
   },
   getChildren: function (id, useCache, callback) {
-    if (!this._checkConnection('getChildren', arguments)) return
+    if (!this._checkConnection('getChildren', arguments)) {
+      return
+    }
 
     if (typeof id === 'function') {
       callback = id
@@ -816,14 +968,16 @@ export default {
       useCache = false
     }
 
-    if (!id) return callback('getChildren: no id given')
+    if (!id) {
+      return callback('getChildren: no id given')
+    }
 
-    let that = this
-    let data = []
+    var that = this
+    var data = []
 
     if (this._useStorage && useCache) {
       if (typeof storage !== 'undefined') {
-        let objects = storage.get('objects')
+        var objects = storage.get('objects')
         if (objects && objects[id] && objects[id].children) {
           return callback(null, objects[id].children)
         }
@@ -838,11 +992,9 @@ export default {
       endkey: id + '.\u9999'
     }, function (err, res) {
       if (err) {
-        callback(err)
-        return
+        return callback(err)
       }
-      let result = {}
-      for (let i = 0; i < res.rows.length; i++) {
+      for (var i = 0; i < res.rows.length; i++) {
         data[res.rows[i].id] = res.rows[i].value
       }
 
@@ -851,11 +1003,9 @@ export default {
         endkey: id + '.\u9999'
       }, function (err, res) {
         if (err) {
-          callback(err)
-          return
+          return callback(err)
         }
-        let result = {}
-        for (let i = 0; i < res.rows.length; i++) {
+        for (var i = 0; i < res.rows.length; i++) {
           data[res.rows[i].id] = res.rows[i].value
         }
 
@@ -865,48 +1015,52 @@ export default {
           endkey: id + '.\u9999'
         }, function (err, res) {
           if (err) {
-            callback(err)
-            return
+            return callback(err)
           }
-          let result = {}
-          for (let i = 0; i < res.rows.length; i++) {
+          for (var i = 0; i < res.rows.length; i++) {
             data[res.rows[i].id] = res.rows[i].value
           }
-          let list = []
+          var list = []
 
-          let count = id.split('.').length
+          var count = id.split('.').length
 
           // find direct children
-          for (let _id in data) {
-            let parts = _id.split('.')
-            if (count + 1 === parts.length) {
-              list.push(_id)
+          for (var _id in data) {
+            if (data.hasOwnProperty(_id)) {
+              var parts = _id.split('.')
+              if (count + 1 === parts.length) {
+                list.push(_id)
+              }
             }
           }
           list.sort()
 
-          if (this._useStorage && typeof storage !== 'undefined') {
-            let objects = storage.get('objects') || {}
+          if (that._useStorage && typeof storage !== 'undefined') {
+            var objects = storage.get('objects') || {}
 
-            for (let id_ in data) {
-              objects[id_] = data[id_]
+            for (var id_ in data) {
+              if (data.hasOwnProperty(id_)) {
+                objects[id_] = data[id_]
+              }
             }
             if (objects[id] && objects[id].common) {
               objects[id].children = list
             }
             // Store for every element theirs children
-            let items = []
-            for (let __id in data) {
-              items.push(__id)
+            var items = []
+            for (var __id in data) {
+              if (data.hasOwnProperty(__id)) {
+                items.push(__id)
+              }
             }
             items.sort()
 
-            for (let k = 0; k < items.length; k++) {
+            for (var k = 0; k < items.length; k++) {
               if (objects[items[k]].common) {
-                let j = k + 1
-                let children = []
-                let len = items[k].length + 1
-                let name = items[k] + '.'
+                var j = k + 1
+                var children = []
+                var len = items[k].length + 1
+                var name = items[k] + '.'
                 while (j < items.length && items[j].substring(0, len) === name) {
                   children.push(items[j++])
                 }
@@ -918,10 +1072,10 @@ export default {
             storage.set('objects', objects)
           }
 
-          if (callback) callback(err, list)
-        }.bind(this))
-      }.bind(this))
-    }.bind(this))
+          callback && callback(err, list)
+        })
+      })
+    })
   },
   getObject: function (id, useCache, callback) {
     if (typeof id === 'function') {
@@ -938,30 +1092,93 @@ export default {
       callback = useCache
       useCache = false
     }
-    if (!id) return callback('no id given')
+    if (!id) {
+      return callback('no id given')
+    }
 
     // If cache used
     if (this._useStorage && useCache && typeof storage !== 'undefined') {
       if (typeof storage !== 'undefined') {
-        let objects = this._objects || storage.get('objects')
-        if (objects && objects[id]) return callback(null, objects[id])
+        var objects = this._objects || storage.get('objects')
+        if (objects && objects[id]) {
+          return callback(null, objects[id])
+        }
       } else if (this._enums) {
         return callback(null, this._enums)
       }
     }
+
+    var that = this
 
     this._socket.emit('getObject', id, function (err, obj) {
       if (err) {
         callback(err)
         return
       }
-      if (this._useStorage && typeof storage !== 'undefined') {
-        let objects = storage.get('objects') || {}
+      if (that._useStorage && typeof storage !== 'undefined') {
+        var objects = storage.get('objects') || {}
         objects[id] = obj
         storage.set('objects', objects)
       }
       return callback(null, obj)
-    }.bind(this))
+    })
+  },
+  getGroups: function (groupName, useCache, callback) {
+    if (typeof groupName === 'function') {
+      callback = groupName
+      groupName = null
+      useCache = false
+    }
+    if (typeof groupName === 'boolean') {
+      callback = useCache
+      useCache = groupName
+      groupName = null
+    }
+    if (typeof useCache === 'function') {
+      callback = useCache
+      useCache = false
+    }
+    groupName = groupName || ''
+
+    // If cache used
+    if (this._useStorage && useCache) {
+      if (typeof storage !== 'undefined') {
+        var groups = this._groups || storage.get('groups')
+        if (groups) {
+          return callback(null, groups)
+        }
+      } else if (this._groups) {
+        return callback(null, this._groups)
+      }
+    }
+    if (this._type === 'local') {
+      return callback(null, [])
+    } else {
+      var that = this
+      // Read all enums
+      this._socket.emit('getObjectView', 'system', 'group', {
+        startkey: 'system.group.' + groupName,
+        endkey: 'system.group.' + groupName + '\u9999'
+      }, function (err, res) {
+        if (err) {
+          return callback(err)
+        }
+        var groups = {}
+        for (var i = 0; i < res.rows.length; i++) {
+          var obj = res.rows[i].value
+          groups[obj._id] = obj
+        }
+        if (that._useStorage) {
+          that._groups = groups
+
+          if (typeof storage !== 'undefined') {
+            storage.set('groups', groups)
+          }
+        }
+
+        callback(null, groups)
+      })
+    }
   },
   getEnums: function (enumName, useCache, callback) {
     if (typeof enumName === 'function') {
@@ -982,8 +1199,10 @@ export default {
     // If cache used
     if (this._useStorage && useCache) {
       if (typeof storage !== 'undefined') {
-        let enums = this._enums || storage.get('enums')
-        if (enums) return callback(null, enums)
+        var enums = this._enums || storage.get('enums')
+        if (enums) {
+          return callback(null, enums)
+        }
       } else if (this._enums) {
         return callback(null, this._enums)
       }
@@ -992,73 +1211,77 @@ export default {
     if (this._type === 'local') {
       return callback(null, [])
     } else {
-      enumName = enumName ? enumName + '.' : ''
 
+      enumName = enumName ? enumName + '.' : ''
+      var that = this
       // Read all enums
       this._socket.emit('getObjectView', 'system', 'enum', {
         startkey: 'enum.' + enumName,
         endkey: 'enum.' + enumName + '\u9999'
       }, function (err, res) {
         if (err) {
-          callback(err)
-          return
+          return callback(err)
         }
-        let enums = {}
-        for (let i = 0; i < res.rows.length; i++) {
-          let obj = res.rows[i].value
+        var enums = {}
+        for (var i = 0; i < res.rows.length; i++) {
+          var obj = res.rows[i].value
           enums[obj._id] = obj
         }
-        if (this._useStorage && typeof storage !== 'undefined') {
+        if (that._useStorage && typeof storage !== 'undefined') {
           storage.set('enums', enums)
         }
         callback(null, enums)
-      }.bind(this))
+      })
     }
+  },
+  getLoggedUser: function (callback) {
+    this._socket.emit('authEnabled', callback)
   },
   // return time when the objects were synchronized
   getSyncTime: function () {
     if (this._useStorage && typeof storage !== 'undefined') {
-      let timeSync = storage.get('timeSync')
-      if (timeSync) return new Date(timeSync)
+      var timeSync = storage.get('timeSync')
+      if (timeSync) {
+        return new Date(timeSync)
+      }
     }
     return null
   },
   addObject: function (objId, obj, callback) {
     if (!this._isConnected) {
       Vue.$log.debug('No connection!')
-      return
-    }
-    // socket.io
+    } else
+      //socket.io
     if (this._socket === null) {
       Vue.$log.debug('socket.io not initialized')
     }
   },
   delObject: function (objId) {
-    if (!this._checkConnection('delObject', arguments)) return
+    if (!this._checkConnection('delObject', arguments)) {
+      return
+    }
 
     this._socket.emit('delObject', objId)
   },
   httpGet: function (url, callback) {
     if (!this._isConnected) {
-      Vue.$log.debug('No connection!')
-      return
+      return Vue.$log.debug('No connection!')
     }
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      Vue.$log.debug('socket.io not initialized')
-      return
+      return Vue.$log.debug('socket.io not initialized')
     }
     this._socket.emit('httpGet', url, function (data) {
-      if (callback) callback(data)
+      callback && callback(data)
     })
   },
   logError: function (errorText) {
     Vue.$log.debug('Error: ' + errorText)
     if (!this._isConnected) {
-      // Vue.$log.debug('No connection!');
+      //Vue.$log.debug('No connection!');
       return
     }
-    // socket.io
+    //socket.io
     if (this._socket === null) {
       Vue.$log.debug('socket.io not initialized')
       return
@@ -1066,7 +1289,7 @@ export default {
     this._socket.emit('log', 'error', 'Addon DashUI  ' + errorText)
   },
   _queueCmdIfRequired: function (func, args) {
-    let that = this
+    var that = this
     if (!this._isAuthDone) {
       // Queue command
       this._cmdQueue.push({ func: func, args: args })
@@ -1080,11 +1303,11 @@ export default {
           if (version) {
             that._isAuthDone = true
             // Repeat all stored requests
-            let __cmdQueue = that._cmdQueue
+            var __cmdQueue = that._cmdQueue
             // Trigger GC
             that._cmdQueue = null
             that._cmdQueue = []
-            for (let t = 0, len = __cmdQueue.length; t < len; t++) {
+            for (var t = 0, len = __cmdQueue.length; t < len; t++) {
               that[__cmdQueue[t].func].apply(that, __cmdQueue[t].args)
             }
           } else {
@@ -1112,8 +1335,7 @@ export default {
     }
 
     if (!this._isConnected) {
-      Vue.$log.debug('No connection!')
-      return
+      return Vue.$log.debug('No connection!')
     }
 
     if (!this._authInfo) {
@@ -1121,7 +1343,9 @@ export default {
     }
   },
   getConfig: function (useCache, callback) {
-    if (!this._checkConnection('getConfig', arguments)) return
+    if (!this._checkConnection('getConfig', arguments)) {
+      return
+    }
 
     if (typeof useCache === 'function') {
       callback = useCache
@@ -1129,7 +1353,7 @@ export default {
     }
     if (this._useStorage && useCache) {
       if (typeof storage !== 'undefined') {
-        let objects = storage.get('objects')
+        var objects = storage.get('objects')
         if (objects && objects['system.config']) {
           return callback(null, objects['system.config'].common)
         }
@@ -1137,11 +1361,11 @@ export default {
         return callback(null, this._objects['system.config'].common)
       }
     }
-    let that = this
+    var that = this
     this._socket.emit('getObject', 'system.config', function (err, obj) {
       if (callback && obj && obj.common) {
         if (that._useStorage && typeof storage !== 'undefined') {
-          let objects = storage.get('objects') || {}
+          var objects = storage.get('objects') || {}
           objects['system.config'] = obj
           storage.set('objects', objects)
         }
@@ -1160,7 +1384,7 @@ export default {
   _detectViews: function (projectDir, callback) {
     this.readDir('/' + this.namespace + '/' + projectDir, function (err, dirs) {
       // find vis-views.json
-      for (let f = 0; f < dirs.length; f++) {
+      for (var f = 0; f < dirs.length; f++) {
         if (dirs[f].file === 'vis-views.json' && (!dirs[f].acl || dirs[f].acl.read)) {
           return callback(err, {
             name: projectDir,
@@ -1173,31 +1397,29 @@ export default {
     })
   },
   readProjects: function (callback) {
-    let that = this
+    var that = this
     this.readDir('/' + this.namespace, function (err, dirs) {
-      let result = []
-      let count = 0
-      for (let d = 0; d < dirs.length; d++) {
+      var result = []
+      var count = 0
+      for (var d = 0; d < dirs.length; d++) {
         if (dirs[d].isDir) {
           count++
           that._detectViews(dirs[d].file, function (subErr, project) {
-            if (project) result.push(project)
-
+            project && result.push(project)
             err = err || subErr
-            if (!(--count)) callback(err, result)
+            !--count && callback(err, result)
           })
         }
       }
     })
   },
   chmodProject: function (projectDir, mode, callback) {
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      Vue.$log.debug('socket.io not initialized')
-      return
+      return Vue.$log.debug('socket.io not initialized')
     }
     this._socket.emit('chmodFile', this.namespace, projectDir + '*', { mode: mode }, function (err, data) {
-      if (callback) callback(err, data)
+      callback && callback(err, data)
     })
   },
   clearCache: function () {
@@ -1206,15 +1428,18 @@ export default {
     }
   },
   getHistory: function (id, options, callback) {
-    if (!this._checkConnection('getHistory', arguments)) return
+    if (!this._checkConnection('getHistory', arguments)) {
+      return
+    }
 
-    if (!options) options = {}
-    if (!options.timeout) options.timeout = 2000
+    options = options || {}
+    options.timeout = options.timeout || 2000
 
-    let timeout = setTimeout(function () {
+    var timeout = setTimeout(function () {
       timeout = null
       callback('timeout')
     }, options.timeout)
+
     this._socket.emit('getHistory', id, options, function (err, result) {
       if (timeout) {
         clearTimeout(timeout)
@@ -1224,26 +1449,25 @@ export default {
     })
   },
   getLiveHost: function (cb) {
-    let that = this
+    var that = this
     this._socket.emit('getObjectView', 'system', 'host', {
       startkey: 'system.host.',
       endkey: 'system.host.\u9999'
     }, function (err, res) {
-      let _hosts = []
-      for (let h = 0; h < res.rows.length; h++) {
+      var _hosts = []
+      for (var h = 0; h < res.rows.length; h++) {
         _hosts.push(res.rows[h].id + '.alive')
       }
       if (!_hosts.length) {
-        cb('')
-        return
+        return cb('')
       }
       that.getStates(_hosts, function (err, states) {
-        for (let h in states) {
-          if (states[h].val) {
-            cb(h.substring(0, h.length - '.alive'.length))
-            return
+        for (var h in states) {
+          if (states.hasOwnProperty(h) && (states[h].val === 'true' || states[h].val === true)) {
+            return cb(h.substring(0, h.length - '.alive'.length))
           }
         }
+
         cb('')
       })
     })
@@ -1254,20 +1478,20 @@ export default {
       useConvert = undefined
     }
     if (!this._isConnected) {
-      Vue.$log.debug('No connection!')
-      return
+      return Vue.$log.debug('No connection!')
     }
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      Vue.$log.debug('socket.io not initialized')
-      return
+      return Vue.$log.debug('socket.io not initialized')
     }
-    if (project.match(/\/$/)) project = project.substring(0, project.length - 1)
-    let that = this
+    if (project.match(/\/$/)) {
+      project = project.substring(0, project.length - 1)
+    }
+
+    var that = this
     this.getLiveHost(function (host) {
       if (!host) {
-        window.alert('No active host found')
-        return
+        return window.alert('No active host found')
       }
       // to do find active host
       that._socket.emit('sendToHost', host, 'readDirAsZip', {
@@ -1277,36 +1501,37 @@ export default {
           settings: useConvert
         }
       }, function (data) {
-        if (data.error) Vue.$log.error(data.error)
-        if (callback) callback(data.error, data.data)
+        data.error && console.error(data.error)
+        callback && callback(data.error, data.data)
       })
+
     })
   },
   writeDirAsZip: function (project, base64, callback) {
     if (!this._isConnected) {
-      Vue.$log.debug('No connection!')
-      return
+      return Vue.$log.debug('No connection!')
     }
-    // socket.io
+    //socket.io
     if (this._socket === null) {
-      Vue.$log.debug('socket.io not initialized')
-      return
+      return Vue.$log.debug('socket.io not initialized')
     }
-    if (project.match(/\/$/)) project = project.substring(0, project.length - 1)
-    let that = this
+    if (project.match(/\/$/)) {
+      project = project.substring(0, project.length - 1)
+    }
+    var that = this
     this.getLiveHost(function (host) {
       if (!host) {
-        window.alert('No active host found')
-        return
+        return window.alert('No active host found')
       }
       that._socket.emit('sendToHost', host, 'writeDirAsZip', {
         id: that.namespace,
         name: project || 'main',
         data: base64
       }, function (data) {
-        if (data.error) Vue.$log.error(data.error)
-        if (callback) callback(data.error)
+        data.error && console.error(data.error)
+        callback && callback(data.error)
       })
+
     })
   }
 }
